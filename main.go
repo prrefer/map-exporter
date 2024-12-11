@@ -2,15 +2,15 @@ package main
 
 import (
 	"compress/bzip2"
-	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
 )
 
-func getMap(mapName string) string {
+func getMapName(mapName string) string {
 	if !strings.ContainsRune(mapName, '_') {
 		return fmt.Sprintf("bhop_%s", mapName)
 	}
@@ -20,16 +20,20 @@ func getMap(mapName string) string {
 
 func downloadMap(mapName string) (err error) {
 	mapUrl := fmt.Sprintf("http://main.fastdl.me/maps/%s.bsp.bz2", mapName)
+	fmt.Println(mapUrl)
 
+	fmt.Println("gettting " + mapName)
 	resp, err := http.Get(mapUrl)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return errors.New("map not found")
+		fmt.Println("failure getting " + mapName)
+		return
 	}
 
+	fmt.Println("creating...")
 	output, err := os.Create(fmt.Sprintf("%s.bsp", mapName))
 	if err != nil {
 		return err
@@ -46,15 +50,16 @@ func downloadMap(mapName string) (err error) {
 }
 
 func main() {
-	fmt.Println("map-exporter | https://github.com/prrefer/map-exporter")
-	for {
-		fmt.Print("map: ")
-		var input string
-		fmt.Scan(&input)
+	if len(os.Args) < 2 {
+		log.Fatalln("no arguments")
+	}
 
-		mapName := getMap(input)
-		if err := downloadMap(mapName); err != nil {
-			fmt.Printf("could not retrieve map: %s\n", err.Error())
+	mapNames := strings.Split(os.Args[1], ",")
+	for _, arg := range mapNames {
+		mapName := getMapName(arg)
+		err := downloadMap(mapName)
+		if err != nil {
+			log.Fatalln(err.Error())
 		}
 	}
 }
